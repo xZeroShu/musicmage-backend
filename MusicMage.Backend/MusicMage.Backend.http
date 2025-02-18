@@ -1,0 +1,6 @@
+@MusicMage.Backend_HostAddress = http://localhost:5076
+
+GET {{MusicMage.Backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
