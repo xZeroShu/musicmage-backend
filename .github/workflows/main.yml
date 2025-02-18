@@ -92,8 +92,10 @@ jobs:
         git config user.email "actions@github.com"
         git pull origin $(git rev-parse --abbrev-ref HEAD)
         git add README.md ./TestsSummary/badge_linecoverage.svg ./TestsSummary/badge_branchcoverage.svg
-        git commit -m "chore: add coverage badges to README"
-        git push origin $(git rev-parse --abbrev-ref HEAD)
+        git diff --cached --exit-code || (
+            git commit -m "chore: add coverage badges to README"
+            git push origin $(git rev-parse --abbrev-ref HEAD)
+            )
   release:
     runs-on: ubuntu-latest
     needs: unit-tests-and-coverage
