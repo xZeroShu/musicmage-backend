@@ -1,4 +1,4 @@
-name: Build, Push Docker Image, and Update Changelog
+name: CI/CD Pipeline with Semantic Release
 
 on:
   push:
@@ -57,10 +57,10 @@ jobs:
       run: |
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
-        git pull origin main
+        git pull origin $(git rev-parse --abbrev-ref HEAD)
         git add ./TestsSummary/testsSummary.md
-        git commit -m "Update tests summary"
-        git push origin main
+        git commit -m "chore: update tests summary"
+        git push origin $(git rev-parse --abbrev-ref HEAD)
 
     - name: Generate coverage report badges
       env:
