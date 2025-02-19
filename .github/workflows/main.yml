@@ -137,7 +137,7 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          docker build -t your-docker-repo/your-image-name:${{ env.new_version }} .
-          docker push your-docker-repo/your-image-name:${{ env.new_version }}
-          docker tag your-docker-repo/your-image-name:${{ env.new_version }} your-docker-repo/your-image-name:latest
-          docker push your-docker-repo/your-image-name:latest
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/musicmage-backend:${{ env.new_version }} .
+          docker push ${{ secrets.DOCKER_USERNAME }}/musicmage-backend:${{ env.new_version }}
+          docker tag ${{ secrets.DOCKER_USERNAME }}/musicmage-backend:${{ env.new_version }} ${{ secrets.DOCKER_USERNAME }}/musicmage-backend:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/musicmage-backend:latest
