@@ -1,4 +1,4 @@
-namespace MusicMage.Backend;
+namespace MusicMage.Backend.Helpers;
 
 public static class NoteHelper
 {
