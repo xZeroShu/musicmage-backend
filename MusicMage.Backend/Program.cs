@@ -1,41 +1,15 @@
-var builder = WebApplication.CreateBuilder(args);
+using MusicMage.Backend.Helpers;
+using NAudio.Wave;
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+List<string> noteList = ["C", "D", "E", "F", "G", "A", "B"];
+var filePath = Path.Combine(Environment.CurrentDirectory, "notes.wav");
+using var fileStream = new FileStream(filePath, FileMode.Create);
+using var writer = new WaveFileWriter(fileStream, new WaveFormat(NoteHelper.SampleRate, 16, 1));
+for (var i = 21; i < noteList.Count * 5; i++)
 {
-    app.MapOpenApi();
-}
-
-app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-    {
-        var forecast = Enumerable.Range(1, 5).Select(index =>
-                new WeatherForecast
-                (
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    summaries[Random.Shared.Next(summaries.Length)]
-                ))
-            .ToArray();
-        return forecast;
-    })
-    .WithName("GetWeatherForecast");
-
-app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    var noteFrequency = NoteHelper.GetNoteFrequency(noteList[i % noteList.Count], (i / noteList.Count));
+    var waveBuffer = NoteHelper.GetSineWaveBuffer(noteFrequency, 300);
+    var silenceBuffer = NoteHelper.GetSilenceWaveBuffer(50);
+    writer.Write(waveBuffer, 0, waveBuffer.Length);
+    writer.Write(silenceBuffer, 0, silenceBuffer.Length);
 }
