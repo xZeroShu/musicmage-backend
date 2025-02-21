@@ -3,6 +3,9 @@ namespace MusicMage.Backend.Helpers;
 public static class NoteHelper
 {
     public const int SampleRate = 44100; // Standard audio sample rate
+    private const double FadeOutDuration = 0.02;
+    private const short Amplitude = 16383; // short.MaxValue / 2
+    private const int FadeOutSamples = (int)(FadeOutDuration * SampleRate);
     private static readonly Dictionary<string, float> NoteXFrequency = new()
     {
         ["C"] = 16.35f,
@@ -27,16 +30,62 @@ public static class NoteHelper
     
     public static byte[] GetSineWaveBuffer(double frequency, int durationMs)
     {
-        var noteSampleCount = (int)((SampleRate * durationMs) / 1000.0);
-        
+        var noteSampleCount = (int)(SampleRate * durationMs / 1000.0);
         var noteBuffer = new short[noteSampleCount];
         
-        const double amplitude = 16383d; // short.MaxValue / 2
         var angleIncrement = 2.0 * Math.PI * frequency / SampleRate;
 
         for (var i = 0; i < noteSampleCount; i++)
         {
-            noteBuffer[i] = (short)(amplitude * Math.Sin(i * angleIncrement));
+            noteBuffer[i] = (short)(Amplitude * Math.Sin(i * angleIncrement));
+
+            if (i < noteSampleCount - FadeOutSamples) continue;
+            
+            var fadeFactor = (double)(noteSampleCount - i) / FadeOutSamples;
+            noteBuffer[i] = (short)(noteBuffer[i] * fadeFactor);
+        }
+
+        return noteBuffer.SelectMany(BitConverter.GetBytes).ToArray();
+    }
+    
+    public static byte[] GetSquareWaveBuffer(double frequency, int durationMs)
+    {
+        var noteSampleCount = (int)(SampleRate * durationMs / 1000.0);
+        var noteBuffer = new short[noteSampleCount];
+        var samplesPerCycle = (int)(SampleRate / frequency);
+
+        for (var i = 0; i < noteSampleCount; i++)
+        {
+            noteBuffer[i] = (i % samplesPerCycle < samplesPerCycle / 2) ? Amplitude : (short)-Amplitude;
+
+            if (i < noteSampleCount - FadeOutSamples) continue;
+            
+            var fadeFactor = (double)(noteSampleCount - i) / FadeOutSamples;
+            noteBuffer[i] = (short)(noteBuffer[i] * fadeFactor);
+        }
+
+        return noteBuffer.SelectMany(BitConverter.GetBytes).ToArray();
+    }
+    
+    public static byte[] GetTriangleWaveBuffer(double frequency, int durationMs)
+    {
+        var noteSampleCount = (int)(SampleRate * durationMs / 1000.0);
+        var noteBuffer = new short[noteSampleCount];
+        var samplesPerCycle = (int)(SampleRate / frequency);
+
+        for (var i = 0; i < noteSampleCount; i++)
+        {
+            var cyclePosition = (double)(i % samplesPerCycle) / samplesPerCycle;
+        
+            if (cyclePosition < 0.5)
+                noteBuffer[i] = (short)(2 * Amplitude * cyclePosition - Amplitude);
+            else
+                noteBuffer[i] = (short)(Amplitude - 2 * Amplitude * (cyclePosition - 0.5));
+            
+            if (i < noteSampleCount - FadeOutSamples) continue;
+            
+            var fadeFactor = (double)(noteSampleCount - i) / FadeOutSamples;
+            noteBuffer[i] = (short)(noteBuffer[i] * fadeFactor);
         }
 
         return noteBuffer.SelectMany(BitConverter.GetBytes).ToArray();
