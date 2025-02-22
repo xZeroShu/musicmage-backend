@@ -24,11 +24,11 @@ public static class NoteHelper
         ["B"] = 30.87f
     };
 
-    private static readonly Dictionary<WaveType, Func<int, double, int, short>> WaveTypeXWaveMethod = new()
+    private static readonly Dictionary<WaveType, Func<int, double, int, double, short>> WaveTypeXWaveMethod = new()
     {
-        { WaveType.Sine, (i, angle, _) => GetSineWaveBuffer(i, angle) },
-        { WaveType.Square, (i, _, samples) => GetSquareWaveBuffer(i, samples) },
-        { WaveType.Triangle, (i, _, samples) => GetTriangleWaveBuffer(i, samples) }
+        { WaveType.Sine, (i, angle, _, _) => GetSineWaveBuffer(i, angle) },
+        { WaveType.Square, (i, _, samples, dutyCycle) => GetSquareWaveBuffer(i, samples, dutyCycle) },
+        { WaveType.Triangle, (i, _, samples, _) => GetTriangleWaveBuffer(i, samples) }
     };
 
     public static float GetNoteFrequency(string note, int octave = 0)
@@ -37,7 +37,7 @@ public static class NoteHelper
         return noteToReturn * MathF.Pow(2, octave);
     }
 
-    public static byte[] GetWaveBuffer(double frequency, int durationMs, WaveType waveTypes, bool fade = true)
+    public static byte[] GetWaveBuffer(double frequency, float durationMs, WaveType waveTypes, double dutyCycle = 0.5, bool fade = true)
     {
         var noteSampleCount = (int)(SampleRate * durationMs / 1000.0);
         var noteBuffer = new short[noteSampleCount];
@@ -52,7 +52,7 @@ public static class NoteHelper
 
         for (var i = 0; i < noteSampleCount; i++)
         {
-            noteBuffer[i] = (short)selectedWaves.Sum(func => func(i, angleIncrement, samplesPerCycle));
+            noteBuffer[i] = (short)selectedWaves.Sum(func => func(i, angleIncrement, samplesPerCycle, dutyCycle));
 
             if (!fade) continue;
             if (i < noteSampleCount - FadeOutSamples) continue;
@@ -67,9 +67,10 @@ public static class NoteHelper
         return (short)(Amplitude * Math.Sin(i * angleIncrement));
     }
 
-    private static short GetSquareWaveBuffer(int i, int samplesPerCycle)
+    private static short GetSquareWaveBuffer(int i, int samplesPerCycle, double dutyCycle)
     {
-        return (i % samplesPerCycle < samplesPerCycle / 2) ? Amplitude : (short)-Amplitude;
+        var threshold = (int)(samplesPerCycle * dutyCycle);
+        return (i % samplesPerCycle < threshold) ? Amplitude : (short)-Amplitude;
     }
 
     private static short GetTriangleWaveBuffer(int i, int samplesPerCycle)
