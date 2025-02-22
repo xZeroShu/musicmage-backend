@@ -61,6 +61,67 @@ public static class NoteHelper
 
         return noteBuffer.SelectMany(BitConverter.GetBytes).ToArray();
     }
+    
+    public static byte[] GetWaveBuffer(
+        Dictionary<int, (double frequency, float durationMs, WaveType waveType, double dutyCycle)> channelSettings,
+        bool fade = true)
+    {
+        var channels = channelSettings.Count;
+        var channelSampleCounts = channelSettings.ToDictionary(
+            c => c.Key,
+            c => (int)(SampleRate * c.Value.durationMs / 1000.0)
+        );
+
+        var maxSampleCount = channelSampleCounts.Values.Max();
+
+        var noteBuffer = new short[maxSampleCount, channels];
+
+        foreach (var channel in channelSettings.Keys)
+        {
+            var frequency = channelSettings[channel].frequency;
+            var durationMs = channelSettings[channel].durationMs;
+            var waveType = channelSettings[channel].waveType;
+
+            var noteSampleCount = (int)(SampleRate * durationMs / 1000.0);
+            var samplesPerCycle = (int)(SampleRate / frequency);
+            var angleIncrement = 2.0 * Math.PI * frequency / SampleRate;
+
+            var selectedWaves = WaveTypeXWaveMethod
+                .Where(w => waveType.HasFlag(w.Key))
+                .Select(w => w.Value)
+                .ToList();
+
+            for (var i = 0; i < noteSampleCount; i++)
+            {
+                noteBuffer[i, channel] = (short)selectedWaves.Sum(func => func(i, angleIncrement, samplesPerCycle, channelSettings[channel].dutyCycle));
+
+                if (fade && i >= noteSampleCount - FadeOutSamples)
+                {
+                    noteBuffer[i, channel] = AddFade(noteSampleCount, i, noteBuffer[i, channel]);
+                }
+            }
+
+            for (var i = noteSampleCount; i < maxSampleCount; i++)
+            {
+                noteBuffer[i, channel] = 0;
+            }
+        }
+
+        var interleavedBuffer = new byte[maxSampleCount * channels * sizeof(short)];
+
+        var index = 0;
+        for (var i = 0; i < maxSampleCount; i++)
+        {
+            for (var ch = 0; ch < channels; ch++)
+            {
+                var sample = (i < channelSampleCounts[ch]) ? noteBuffer[i, ch] : (short)0;
+                BitConverter.GetBytes(sample).CopyTo(interleavedBuffer, index);
+                index += sizeof(short);
+            }
+        }
+
+        return interleavedBuffer.ToArray();
+    }
 
     private static short GetSineWaveBuffer(int i, double angleIncrement)
     {
