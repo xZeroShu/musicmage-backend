@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - feature/*
-      - fix/*
   pull_request:
     types:
       - closed
