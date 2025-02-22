@@ -1,3 +1,5 @@
+using MusicMage.Backend.Enums;
+
 namespace MusicMage.Backend.Helpers;
 
 public static class NoteHelper
@@ -22,73 +24,62 @@ public static class NoteHelper
         ["B"] = 30.87f
     };
 
+    private static readonly Dictionary<WaveType, Func<int, double, int, short>> WaveTypeXWaveMethod = new()
+    {
+        { WaveType.Sine, (i, angle, _) => GetSineWaveBuffer(i, angle) },
+        { WaveType.Square, (i, _, samples) => GetSquareWaveBuffer(i, samples) },
+        { WaveType.Triangle, (i, _, samples) => GetTriangleWaveBuffer(i, samples) }
+    };
+
     public static float GetNoteFrequency(string note, int octave = 0)
     {
         var noteToReturn = NoteXFrequency.GetValueOrDefault(note, 0);
         return noteToReturn * MathF.Pow(2, octave);
     }
-    
-    public static byte[] GetSineWaveBuffer(double frequency, int durationMs)
+
+    public static byte[] GetWaveBuffer(double frequency, int durationMs, WaveType waveTypes, bool fade = true)
     {
         var noteSampleCount = (int)(SampleRate * durationMs / 1000.0);
         var noteBuffer = new short[noteSampleCount];
-        
+        var samplesPerCycle = (int)(SampleRate / frequency);
+
         var angleIncrement = 2.0 * Math.PI * frequency / SampleRate;
 
+        var selectedWaves = WaveTypeXWaveMethod
+            .Where(w => waveTypes.HasFlag(w.Key))
+            .Select(w => w.Value)
+            .ToList();
+
         for (var i = 0; i < noteSampleCount; i++)
         {
-            noteBuffer[i] = (short)(Amplitude * Math.Sin(i * angleIncrement));
+            noteBuffer[i] = (short)selectedWaves.Sum(func => func(i, angleIncrement, samplesPerCycle));
 
+            if (!fade) continue;
             if (i < noteSampleCount - FadeOutSamples) continue;
-            
-            var fadeFactor = (double)(noteSampleCount - i) / FadeOutSamples;
-            noteBuffer[i] = (short)(noteBuffer[i] * fadeFactor);
+            AddFade(noteSampleCount, i, noteBuffer[i]);
         }
 
         return noteBuffer.SelectMany(BitConverter.GetBytes).ToArray();
     }
-    
-    public static byte[] GetSquareWaveBuffer(double frequency, int durationMs)
+
+    private static short GetSineWaveBuffer(int i, double angleIncrement)
     {
-        var noteSampleCount = (int)(SampleRate * durationMs / 1000.0);
-        var noteBuffer = new short[noteSampleCount];
-        var samplesPerCycle = (int)(SampleRate / frequency);
-
-        for (var i = 0; i < noteSampleCount; i++)
-        {
-            noteBuffer[i] = (i % samplesPerCycle < samplesPerCycle / 2) ? Amplitude : (short)-Amplitude;
-
-            if (i < noteSampleCount - FadeOutSamples) continue;
-            
-            var fadeFactor = (double)(noteSampleCount - i) / FadeOutSamples;
-            noteBuffer[i] = (short)(noteBuffer[i] * fadeFactor);
-        }
-
-        return noteBuffer.SelectMany(BitConverter.GetBytes).ToArray();
+        return (short)(Amplitude * Math.Sin(i * angleIncrement));
     }
-    
-    public static byte[] GetTriangleWaveBuffer(double frequency, int durationMs)
+
+    private static short GetSquareWaveBuffer(int i, int samplesPerCycle)
     {
-        var noteSampleCount = (int)(SampleRate * durationMs / 1000.0);
-        var noteBuffer = new short[noteSampleCount];
-        var samplesPerCycle = (int)(SampleRate / frequency);
+        return (i % samplesPerCycle < samplesPerCycle / 2) ? Amplitude : (short)-Amplitude;
+    }
 
-        for (var i = 0; i < noteSampleCount; i++)
-        {
-            var cyclePosition = (double)(i % samplesPerCycle) / samplesPerCycle;
-        
-            if (cyclePosition < 0.5)
-                noteBuffer[i] = (short)(2 * Amplitude * cyclePosition - Amplitude);
-            else
-                noteBuffer[i] = (short)(Amplitude - 2 * Amplitude * (cyclePosition - 0.5));
-            
-            if (i < noteSampleCount - FadeOutSamples) continue;
-            
-            var fadeFactor = (double)(noteSampleCount - i) / FadeOutSamples;
-            noteBuffer[i] = (short)(noteBuffer[i] * fadeFactor);
-        }
+    private static short GetTriangleWaveBuffer(int i, int samplesPerCycle)
+    {
+        var cyclePosition = (double)(i % samplesPerCycle) / samplesPerCycle;
 
-        return noteBuffer.SelectMany(BitConverter.GetBytes).ToArray();
+        if (cyclePosition < 0.5)
+            return (short)(2 * Amplitude * cyclePosition - Amplitude);
+        else
+            return (short)(Amplitude - 2 * Amplitude * (cyclePosition - 0.5));
     }
 
     public static byte[] GetSilenceWaveBuffer(int pauseMs)
@@ -96,5 +87,11 @@ public static class NoteHelper
         var pauseSampleCount = (int)((SampleRate * pauseMs) / 1000.0);
         var silenceBuffer = new short[pauseSampleCount];
         return silenceBuffer.SelectMany(BitConverter.GetBytes).ToArray();
+    }
+
+    private static short AddFade(int noteSampleCount, int i, short note)
+    {
+        var fadeFactor = (double)(noteSampleCount - i) / FadeOutSamples;
+        return (short)(note * fadeFactor);
     }
 }
