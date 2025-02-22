@@ -56,7 +56,7 @@ public static class NoteHelper
 
             if (!fade) continue;
             if (i < noteSampleCount - FadeOutSamples) continue;
-            AddFade(noteSampleCount, i, noteBuffer[i]);
+            noteBuffer[i] = AddFade(noteSampleCount, i, noteBuffer[i]);
         }
 
         return noteBuffer.SelectMany(BitConverter.GetBytes).ToArray();
