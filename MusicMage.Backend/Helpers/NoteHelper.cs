@@ -7,6 +7,9 @@ public static class NoteHelper
     public const int SampleRate = 44100; // Standard audio sample rate
     private const double FadeOutDuration = 0.02;
     private const short Amplitude = 16383; // short.MaxValue / 2
+    private const float DecayMs = 20;
+    private const float SustainLevel = 0.7f;
+    private const short ReleaseMs = 50;
     private const int FadeOutSamples = (int)(FadeOutDuration * SampleRate);
     private static readonly Dictionary<string, float> NoteXFrequency = new()
     {
@@ -36,31 +39,6 @@ public static class NoteHelper
         var noteToReturn = NoteXFrequency.GetValueOrDefault(note, 0);
         return noteToReturn * MathF.Pow(2, octave);
     }
-
-    public static byte[] GetWaveBuffer(double frequency, float durationMs, WaveType waveTypes, double dutyCycle = 0.5, bool fade = true)
-    {
-        var noteSampleCount = (int)(SampleRate * durationMs / 1000.0);
-        var noteBuffer = new short[noteSampleCount];
-        var samplesPerCycle = (int)(SampleRate / frequency);
-
-        var angleIncrement = 2.0 * Math.PI * frequency / SampleRate;
-
-        var selectedWaves = WaveTypeXWaveMethod
-            .Where(w => waveTypes.HasFlag(w.Key))
-            .Select(w => w.Value)
-            .ToList();
-
-        for (var i = 0; i < noteSampleCount; i++)
-        {
-            noteBuffer[i] = (short)selectedWaves.Sum(func => func(i, angleIncrement, samplesPerCycle, dutyCycle));
-
-            if (!fade) continue;
-            if (i < noteSampleCount - FadeOutSamples) continue;
-            noteBuffer[i] = AddFade(noteSampleCount, i, noteBuffer[i]);
-        }
-
-        return noteBuffer.SelectMany(BitConverter.GetBytes).ToArray();
-    }
     
     public static byte[] GetWaveBuffer(
         Dictionary<int, (double frequency, float durationMs, WaveType waveType, double dutyCycle)> channelSettings,
@@ -86,6 +64,9 @@ public static class NoteHelper
             var samplesPerCycle = (int)(SampleRate / frequency);
             var angleIncrement = 2.0 * Math.PI * frequency / SampleRate;
 
+            const int decaySamples = (int)(SampleRate * DecayMs / 1000.0);
+            const int releaseSamples = (int)(SampleRate * ReleaseMs / 1000.0);
+            
             var selectedWaves = WaveTypeXWaveMethod
                 .Where(w => waveType.HasFlag(w.Key))
                 .Select(w => w.Value)
@@ -93,7 +74,9 @@ public static class NoteHelper
 
             for (var i = 0; i < noteSampleCount; i++)
             {
-                noteBuffer[i, channel] = (short)selectedWaves.Sum(func => func(i, angleIncrement, samplesPerCycle, channelSettings[channel].dutyCycle));
+                var amplitude = GetAmplitudeForEnvelopeAdsr(i, decaySamples, noteSampleCount, releaseSamples);
+
+                noteBuffer[i, channel] = (short)(selectedWaves.Sum(func => func(i, angleIncrement, samplesPerCycle, channelSettings[channel].dutyCycle)) * amplitude);
 
                 if (fade && i >= noteSampleCount - FadeOutSamples)
                 {
@@ -107,6 +90,14 @@ public static class NoteHelper
             }
         }
 
+        var interleavedBuffer = CreateInterleavedBuffer(maxSampleCount, channels, channelSampleCounts, noteBuffer);
+
+        return interleavedBuffer.ToArray();
+    }
+
+    private static byte[] CreateInterleavedBuffer(int maxSampleCount, int channels, Dictionary<int, int> channelSampleCounts,
+        short[,] noteBuffer)
+    {
         var interleavedBuffer = new byte[maxSampleCount * channels * sizeof(short)];
 
         var index = 0;
@@ -120,7 +111,26 @@ public static class NoteHelper
             }
         }
 
-        return interleavedBuffer.ToArray();
+        return interleavedBuffer;
+    }
+
+    private static double GetAmplitudeForEnvelopeAdsr(int i, int decaySamples, int noteSampleCount, int releaseSamples)
+    {
+        double amplitude;
+        if (i < decaySamples)
+        {
+            amplitude = 1.0 - ((1.0 - SustainLevel) * (i / (double)decaySamples));
+        }
+        else if (i < noteSampleCount - releaseSamples)
+        {
+            amplitude = SustainLevel;
+        }
+        else
+        {
+            amplitude = SustainLevel * (1.0 - ((i - (noteSampleCount - releaseSamples)) / (double)releaseSamples));
+        }
+
+        return amplitude;
     }
 
     private static short GetSineWaveBuffer(int i, double angleIncrement)
