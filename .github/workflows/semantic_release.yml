@@ -96,6 +96,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     needs: unit-tests-and-coverage
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta'
     outputs:
       new_version: ${{ steps.semantic_release.outputs.new_version }}
     steps:
