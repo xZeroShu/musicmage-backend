@@ -104,6 +104,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Ensure branch is up to date
+        run: git pull origin $(git rev-parse --abbrev-ref HEAD)
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
