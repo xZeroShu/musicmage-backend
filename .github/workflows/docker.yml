@@ -1,7 +1,7 @@
-name: CI/CD Pipeline with Semantic Release
+name: Docker Build and Push
 
 on:
-  create:
+  push:
     tags:
       - v*.*.*
 jobs:
