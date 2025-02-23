@@ -6,10 +6,6 @@ on:
       - feature/*
       - fix/*
       - refactor/*
-  pull_request:
-    types:
-      - closed
-    branches:
       - beta
       - main
 jobs:
