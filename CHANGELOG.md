@@ -1,3 +1,10 @@
+# [1.0.0-beta.2](https://github.com/xZeroShu/musicmage-backend/compare/v1.0.0-beta.1...v1.0.0-beta.2) (2025-02-23)
+
+
+### Features
+
+* add method for envelopeAdrs ([e8f40b9](https://github.com/xZeroShu/musicmage-backend/commit/e8f40b974f08bf14f925f92cee8a8fae71a06b1a))
+
 # 1.0.0-beta.1 (2025-02-23)
 
 
