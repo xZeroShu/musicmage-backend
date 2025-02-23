@@ -24,4 +24,8 @@
         <Using Include="Xunit"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\MusicMage.Backend\MusicMage.Backend.csproj" />
+    </ItemGroup>
+
 </Project>
