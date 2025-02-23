@@ -129,13 +129,12 @@ public static class WaveHelper
 
         if (cyclePosition < 0.5)
             return (short)(2 * Amplitude * cyclePosition - Amplitude);
-        else
-            return (short)(Amplitude - 2 * Amplitude * (cyclePosition - 0.5));
+        return (short)(Amplitude - 2 * Amplitude * (cyclePosition - 0.5));
     }
 
     public static byte[] GetSilenceWaveBuffer(int pauseMs)
     {
-        var pauseSampleCount = (int)((SampleRate * pauseMs) / 1000.0);
+        var pauseSampleCount = (int)(SampleRate * pauseMs / 1000.0);
         var silenceBuffer = new short[pauseSampleCount];
         return silenceBuffer.SelectMany(BitConverter.GetBytes).ToArray();
     }
