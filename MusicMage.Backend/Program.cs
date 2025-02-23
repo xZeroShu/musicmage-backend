@@ -4,7 +4,7 @@ using NAudio.Wave;
 
 var filePath = Path.Combine(Environment.CurrentDirectory, "notes.wav");
 using var fileStream = new FileStream(filePath, FileMode.Create);
-using var writer = new WaveFileWriter(fileStream, new WaveFormat(NoteHelper.SampleRate, 16, 2));
+using var writer = new WaveFileWriter(fileStream, new WaveFormat(WaveHelper.SampleRate, 16, 2));
 
 List<Dictionary<int, Note>> notes =
 [
@@ -53,8 +53,8 @@ foreach (var note in notes)
         var noteFrequency = NoteHelper.GetNoteFrequency(note[channel].NoteName, note[channel].Octave);
         channelSettings[channel] = (noteFrequency, note[channel].DurationMs, WaveType.Square, 0.5);
     }
-    var waveBuffer = NoteHelper.GetWaveBuffer(channelSettings);
-    // var silenceBuffer = NoteHelper.GetSilenceWaveBuffer(20);
+    var waveBuffer = WaveHelper.GetWaveBuffer(channelSettings);
+    // var silenceBuffer = WaveHelper.GetSilenceWaveBuffer(20);
     writer.Write(waveBuffer, 0, waveBuffer.Length);
     // writer.Write(silenceBuffer, 0, silenceBuffer.Length);
 }
